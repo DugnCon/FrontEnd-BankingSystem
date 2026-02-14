@@ -1,61 +1,30 @@
 "use server";
 
-import { ID, Query } from "node-appwrite";
-import { createAdminClient } from "../appwrite";
 import { parseStringify } from "../utils";
-
-const {
-  APPWRITE_DATABASE_ID: DATABASE_ID,
-  APPWRITE_TRANSACTION_COLLECTION_ID: TRANSACTION_COLLECTION_ID,
-} = process.env;
+import { apiFetch } from "@/lib/api/http";
 
 export const createTransaction = async (transaction: CreateTransactionProps) => {
-  try {
-    const { database } = await createAdminClient();
+  const res = await apiFetch<{ transaction: Transaction }>('/transactions', {
+    method: 'POST',
+    body: JSON.stringify({
+      channel: 'online',
+      category: 'Transfer',
+      ...transaction,
+    }),
+  });
 
-    const newTransaction = await database.createDocument(
-      DATABASE_ID!,
-      TRANSACTION_COLLECTION_ID!,
-      ID.unique(),
-      {
-        channel: 'online',
-        category: 'Transfer',
-        ...transaction
-      }
-    )
+  return parseStringify(res.transaction);
+};
 
-    return parseStringify(newTransaction);
-  } catch (error) {
-    console.log(error);
-  }
-}
+export const getTransactionsByBankId = async ({ bankId }: { bankId: string }) => {
+  const res = await apiFetch<{ transactions: Transaction[], total: number }>('/transactions', {
+    // Query params lọc theo bankId (sender hoặc receiver)
+    // BE nên hỗ trợ query ?bankId=... hoặc ?accountId=...
+  });
 
-export const getTransactionsByBankId = async ({bankId}: getTransactionsByBankIdProps) => {
-  try {
-    const { database } = await createAdminClient();
-
-    const senderTransactions = await database.listDocuments(
-      DATABASE_ID!,
-      TRANSACTION_COLLECTION_ID!,
-      [Query.equal('senderBankId', bankId)],
-    )
-
-    const receiverTransactions = await database.listDocuments(
-      DATABASE_ID!,
-      TRANSACTION_COLLECTION_ID!,
-      [Query.equal('receiverBankId', bankId)],
-    );
-
-    const transactions = {
-      total: senderTransactions.total + receiverTransactions.total,
-      documents: [
-        ...senderTransactions.documents, 
-        ...receiverTransactions.documents,
-      ]
-    }
-
-    return parseStringify(transactions);
-  } catch (error) {
-    console.log(error);
-  }
-}
+  // Nếu BE trả mảng documents thay vì transactions, adjust ở đây
+  return parseStringify({
+    total: res.total,
+    documents: res.transactions,
+  });
+};

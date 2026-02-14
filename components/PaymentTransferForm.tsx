@@ -7,11 +7,6 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
-import { createTransfer } from "@/lib/actions/dwolla.actions";
-import { createTransaction } from "@/lib/actions/transaction.actions";
-import { getBank, getBankByAccountId } from "@/lib/actions/user.actions";
-import { decryptId } from "@/lib/utils";
-
 import { BankDropdown } from "./BankDropdown";
 import { Button } from "./ui/button";
 import {
@@ -26,12 +21,18 @@ import {
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 
+// Giả lập toast (mày có thể import từ sonner hoặc shadcn nếu dùng)
+const toast = {
+  success: (msg: string) => console.log("[TOAST SUCCESS]", msg),
+  error: (msg: string) => console.log("[TOAST ERROR]", msg),
+};
+
 const formSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  name: z.string().min(4, "Transfer note is too short"),
-  amount: z.string().min(4, "Amount is too short"),
-  senderBank: z.string().min(4, "Please select a valid bank account"),
-  sharableId: z.string().min(8, "Please select a valid sharable Id"),
+  email: z.string().email("Email không hợp lệ"),
+  name: z.string().min(4, "Ghi chú chuyển khoản quá ngắn"),
+  amount: z.string().min(1, "Số tiền không được để trống"),
+  senderBank: z.string().min(1, "Vui lòng chọn tài khoản nguồn"),
+  sharableId: z.string().min(1, "Vui lòng nhập mã tài khoản nhận"),
 });
 
 const PaymentTransferForm = ({ accounts }: PaymentTransferFormProps) => {
@@ -53,41 +54,26 @@ const PaymentTransferForm = ({ accounts }: PaymentTransferFormProps) => {
     setIsLoading(true);
 
     try {
-      const receiverAccountId = decryptId(data.sharableId);
-      const receiverBank = await getBankByAccountId({
-        accountId: receiverAccountId,
-      });
-      const senderBank = await getBank({ documentId: data.senderBank });
-
-      const transferParams = {
-        sourceFundingSourceUrl: senderBank.fundingSourceUrl,
-        destinationFundingSourceUrl: receiverBank.fundingSourceUrl,
+      // MOCK: Giả lập chuyển khoản thành công
+      console.log("[MOCK TRANSFER]", {
+        from: data.senderBank,
+        to: data.sharableId,
         amount: data.amount,
-      };
-      // create transfer
-      const transfer = await createTransfer(transferParams);
+        note: data.name,
+        email: data.email,
+      });
 
-      // create transfer transaction
-      if (transfer) {
-        const transaction = {
-          name: data.name,
-          amount: data.amount,
-          senderId: senderBank.userId.$id,
-          senderBankId: senderBank.$id,
-          receiverId: receiverBank.userId.$id,
-          receiverBankId: receiverBank.$id,
-          email: data.email,
-        };
+      // Giả lập delay 1s như API thật
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-        const newTransaction = await createTransaction(transaction);
+      // Toast success
+      toast.success(`Chuyển khoản thành công: ${data.amount} VND đến ${data.email}`);
 
-        if (newTransaction) {
-          form.reset();
-          router.push("/");
-        }
-      }
+      form.reset();
+      router.push("/");
     } catch (error) {
-      console.error("Submitting create transfer request failed: ", error);
+      console.error("[MOCK TRANSFER ERROR]:", error);
+      toast.error("Chuyển khoản thất bại, vui lòng thử lại");
     }
 
     setIsLoading(false);
@@ -104,10 +90,10 @@ const PaymentTransferForm = ({ accounts }: PaymentTransferFormProps) => {
               <div className="payment-transfer_form-item pb-6 pt-5">
                 <div className="payment-transfer_form-content">
                   <FormLabel className="text-14 font-medium text-gray-700">
-                    Select Source Bank
+                    Chọn tài khoản nguồn
                   </FormLabel>
                   <FormDescription className="text-12 font-normal text-gray-600">
-                    Select the bank account you want to transfer funds from
+                    Chọn tài khoản bạn muốn chuyển tiền từ
                   </FormDescription>
                 </div>
                 <div className="flex w-full flex-col">
@@ -133,17 +119,16 @@ const PaymentTransferForm = ({ accounts }: PaymentTransferFormProps) => {
               <div className="payment-transfer_form-item pb-6 pt-5">
                 <div className="payment-transfer_form-content">
                   <FormLabel className="text-14 font-medium text-gray-700">
-                    Transfer Note (Optional)
+                    Ghi chú chuyển khoản (Tùy chọn)
                   </FormLabel>
                   <FormDescription className="text-12 font-normal text-gray-600">
-                    Please provide any additional information or instructions
-                    related to the transfer
+                    Cung cấp thêm thông tin hoặc ghi chú liên quan đến giao dịch
                   </FormDescription>
                 </div>
                 <div className="flex w-full flex-col">
                   <FormControl>
                     <Textarea
-                      placeholder="Write a short note here"
+                      placeholder="Viết ghi chú ngắn gọn ở đây"
                       className="input-class"
                       {...field}
                     />
@@ -157,10 +142,10 @@ const PaymentTransferForm = ({ accounts }: PaymentTransferFormProps) => {
 
         <div className="payment-transfer_form-details">
           <h2 className="text-18 font-semibold text-gray-900">
-            Bank account details
+            Thông tin tài khoản nhận
           </h2>
           <p className="text-16 font-normal text-gray-600">
-            Enter the bank account details of the recipient
+            Nhập thông tin tài khoản của người nhận
           </p>
         </div>
 
@@ -171,12 +156,12 @@ const PaymentTransferForm = ({ accounts }: PaymentTransferFormProps) => {
             <FormItem className="border-t border-gray-200">
               <div className="payment-transfer_form-item py-5">
                 <FormLabel className="text-14 w-full max-w-[280px] font-medium text-gray-700">
-                  Recipient&apos;s Email Address
+                  Email người nhận
                 </FormLabel>
                 <div className="flex w-full flex-col">
                   <FormControl>
                     <Input
-                      placeholder="ex: johndoe@gmail.com"
+                      placeholder="ví dụ: johndoe@gmail.com"
                       className="input-class"
                       {...field}
                     />
@@ -195,12 +180,12 @@ const PaymentTransferForm = ({ accounts }: PaymentTransferFormProps) => {
             <FormItem className="border-t border-gray-200">
               <div className="payment-transfer_form-item pb-5 pt-6">
                 <FormLabel className="text-14 w-full max-w-[280px] font-medium text-gray-700">
-                  Receiver&apos;s Plaid Sharable Id
+                  Mã tài khoản nhận (Sharable ID)
                 </FormLabel>
                 <div className="flex w-full flex-col">
                   <FormControl>
                     <Input
-                      placeholder="Enter the public account number"
+                      placeholder="Nhập mã tài khoản công khai"
                       className="input-class"
                       {...field}
                     />
@@ -219,12 +204,12 @@ const PaymentTransferForm = ({ accounts }: PaymentTransferFormProps) => {
             <FormItem className="border-y border-gray-200">
               <div className="payment-transfer_form-item py-5">
                 <FormLabel className="text-14 w-full max-w-[280px] font-medium text-gray-700">
-                  Amount
+                  Số tiền
                 </FormLabel>
                 <div className="flex w-full flex-col">
                   <FormControl>
                     <Input
-                      placeholder="ex: 5.00"
+                      placeholder="ví dụ: 5.00"
                       className="input-class"
                       {...field}
                     />
@@ -237,13 +222,13 @@ const PaymentTransferForm = ({ accounts }: PaymentTransferFormProps) => {
         />
 
         <div className="payment-transfer_btn-box">
-          <Button type="submit" className="payment-transfer_btn">
+          <Button type="submit" className="payment-transfer_btn" disabled={isLoading}>
             {isLoading ? (
               <>
-                <Loader2 size={20} className="animate-spin" /> &nbsp; Sending...
+                <Loader2 size={20} className="animate-spin" /> &nbsp; Đang gửi...
               </>
             ) : (
-              "Transfer Funds"
+              "Chuyển khoản"
             )}
           </Button>
         </div>

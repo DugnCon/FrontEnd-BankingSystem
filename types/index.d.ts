@@ -5,8 +5,6 @@ declare type SearchParamProps = {
   searchParams: { [key: string]: string | string[] | undefined };
 };
 
-// ========================================
-
 declare type SignUpParams = {
   firstName: string;
   lastName: string;
@@ -28,9 +26,7 @@ declare type LoginUser = {
 declare type User = {
   $id: string;
   email: string;
-  userId: string;
-  dwollaCustomerUrl: string;
-  dwollaCustomerId: string;
+  userID: string;
   firstName: string;
   lastName: string;
   name: string;
@@ -59,7 +55,6 @@ declare type Account = {
   name: string;
   type: string;
   subtype: string;
-  appwriteItemId: string;
   shareableId: string;
 };
 
@@ -75,7 +70,6 @@ declare type Transaction = {
   category: string;
   date: string;
   image: string;
-  type: string;
   $createdAt: string;
   channel: string;
   senderBankId: string;
@@ -179,15 +173,6 @@ declare interface PlaidLinkProps {
   dwollaCustomerId?: string;
 }
 
-// declare type User = sdk.Models.Document & {
-//   accountId: string;
-//   email: string;
-//   name: string;
-//   items: string[];
-//   accessToken: string;
-//   image: string;
-// };
-
 declare interface AuthFormProps {
   type: "sign-in" | "sign-up";
 }
@@ -227,7 +212,7 @@ declare interface SiderbarProps {
 declare interface RecentTransactionsProps {
   accounts: Account[];
   transactions: Transaction[];
-  appwriteItemId: string;
+  selectedAccountId: string;
   page: number;
 }
 
@@ -256,13 +241,12 @@ declare interface PaymentTransferFormProps {
   accounts: Account[];
 }
 
-// Actions
 declare interface getAccountsProps {
-  userId: string;
+  userId: string | number;
 }
 
 declare interface getAccountProps {
-  appwriteItemId: string;
+  accountId: string | number;
 }
 
 declare interface getInstitutionProps {
@@ -270,14 +254,14 @@ declare interface getInstitutionProps {
 }
 
 declare interface getTransactionsProps {
-  accessToken: string;
+  accountId: string | number;
 }
 
 declare interface CreateFundingSourceOptions {
-  customerId: string; // Dwolla Customer ID
-  fundingSourceName: string; // Dwolla Funding Source Name
-  plaidToken: string; // Plaid Account Processor Token
-  _links: object; // Dwolla On Demand Authorization Link
+  customerId: string;
+  fundingSourceName: string;
+  plaidToken: string;
+  _links: object;
 }
 
 declare interface CreateTransactionProps {
@@ -327,4 +311,33 @@ declare interface getBankProps {
 
 declare interface getBankByAccountIdProps {
   accountId: string;
+}
+
+declare interface BiometricPreference {
+  userId: number;
+  hasFaceId: boolean;
+  hasFingerprint: boolean;
+  faceDescriptor: string | null;
+}
+
+declare interface FaceVerificationResult {
+  success: boolean;
+  matchScore?: number;
+  error?: string;
+  fallbackAvailable: boolean;
+}
+
+declare interface FaceRegistrationResult {
+  success: boolean;
+  message: string;
+}
+
+declare interface FingerprintRegistrationResult {
+  success: boolean;
+  message: string;
+}
+
+declare interface FingerprintVerificationResult {
+  success: boolean;
+  message: string;
 }

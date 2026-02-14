@@ -1,14 +1,14 @@
-import Link from 'next/link'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { BankTabItem } from './BankTabItem'
-import BankInfo from './BankInfo'
-import TransactionsTable from './TransactionsTable'
-import { Pagination } from './Pagination'
+import Link from 'next/link';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BankTabItem } from './BankTabItem';
+import BankInfo from './BankInfo';
+import TransactionsTable from './TransactionsTable';
+import { Pagination } from './Pagination';
 
 const RecentTransactions = ({
   accounts,
   transactions = [],
-  appwriteItemId,
+  selectedAccountId,
   page = 1,
 }: RecentTransactionsProps) => {
   const rowsPerPage = 10;
@@ -18,29 +18,32 @@ const RecentTransactions = ({
   const indexOfFirstTransaction = indexOfLastTransaction - rowsPerPage;
 
   const currentTransactions = transactions.slice(
-    indexOfFirstTransaction, indexOfLastTransaction
-  )
+    indexOfFirstTransaction,
+    indexOfLastTransaction
+  );
+
+  const selectedAccount = accounts.find(acc => acc.id === selectedAccountId) || accounts[0];
 
   return (
     <section className="recent-transactions">
       <header className="flex items-center justify-between">
         <h2 className="recent-transactions-label">Recent transactions</h2>
         <Link
-          href={`/transaction-history/?id=${appwriteItemId}`}
+          href={`/transaction-history/?id=${selectedAccount?.id || ''}`}
           className="view-all-btn"
         >
           View all
         </Link>
       </header>
 
-      <Tabs defaultValue={appwriteItemId} className="w-full">
-      <TabsList className="recent-transactions-tablist">
+      <Tabs defaultValue={selectedAccount?.id || ''} className="w-full">
+        <TabsList className="recent-transactions-tablist">
           {accounts.map((account: Account) => (
-            <TabsTrigger key={account.id} value={account.appwriteItemId}>
+            <TabsTrigger key={account.id} value={account.id}>
               <BankTabItem
                 key={account.id}
                 account={account}
-                appwriteItemId={appwriteItemId}
+                selectedAccountId={account.id}
               />
             </TabsTrigger>
           ))}
@@ -48,18 +51,17 @@ const RecentTransactions = ({
 
         {accounts.map((account: Account) => (
           <TabsContent
-            value={account.appwriteItemId}
+            value={account.id}
             key={account.id}
             className="space-y-4"
           >
             <BankInfo 
               account={account}
-              appwriteItemId={appwriteItemId}
+              selectedAccountId={account.id}
               type="full"
             />
 
             <TransactionsTable transactions={currentTransactions} />
-            
 
             {totalPages > 1 && (
               <div className="my-4 w-full">
@@ -70,7 +72,7 @@ const RecentTransactions = ({
         ))}
       </Tabs>
     </section>
-  )
-}
+  );
+};
 
-export default RecentTransactions
+export default RecentTransactions;
