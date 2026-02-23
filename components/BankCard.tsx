@@ -9,7 +9,7 @@ const BankCard = ({ account, userName, showBalance = true }: CreditCardProps) =>
 
   return (
     <div className="flex flex-col">
-      <Link href={`/transaction-history/?id=${account.id}`} className="bank-card">
+      <Link href={`/transaction-history/?id=${account.accountID}`} className="bank-card">
         <div className="bank-card_content">
           <div>
             <h1 className="text-16 font-semibold text-white">
@@ -60,7 +60,7 @@ const BankCard = ({ account, userName, showBalance = true }: CreditCardProps) =>
         />
       </Link>
 
-      {showBalance && <Copy title={account?.shareableId} />}
+      {showBalance && <Copy title={account?.shareableID} />}
     </div>
   );
 };

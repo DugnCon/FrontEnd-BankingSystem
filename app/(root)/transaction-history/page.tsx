@@ -12,27 +12,24 @@ const TransactionHistory = async ({ searchParams: { id, page }}:SearchParamProps
   
   if (!loggedIn) return;
   
-  const accounts = await getAccounts({ 
-    userId: loggedIn.userID || '' 
-  });
+  const accounts = await getAccounts();
 
-  if(!accounts?.data?.length) return;
+  if(!accounts?.data) return;
   
   const accountsData = accounts?.data;
   
-  // SỬA: từ appwriteItemId thành accountId
-  const accountId = (id as string) || accountsData[0]?.accountId || accountsData[0]?.id;
-  const account = await getAccount({ accountId });
+  const accountId = (id as string) || accountsData?.accountID || accountsData?.id;
+  const account = await getAccounts();
 
   const rowsPerPage = 10;
-  const totalPages = Math.ceil(account?.transactions?.length / rowsPerPage);
+  const totalPages = Math.ceil((account?.transactions?.length || 0) / rowsPerPage);
 
   const indexOfLastTransaction = currentPage * rowsPerPage;
   const indexOfFirstTransaction = indexOfLastTransaction - rowsPerPage;
 
   const currentTransactions = account?.transactions?.slice(
     indexOfFirstTransaction, indexOfLastTransaction
-  );
+  ) || [];
 
   return (
     <div className="transactions">
@@ -65,7 +62,7 @@ const TransactionHistory = async ({ searchParams: { id, page }}:SearchParamProps
 
         <section className="flex w-full flex-col gap-6">
           <TransactionsTable 
-            transactions={currentTransactions || []}
+            transactions={currentTransactions}
           />
             {totalPages > 1 && (
               <div className="my-4 w-full">
@@ -78,4 +75,4 @@ const TransactionHistory = async ({ searchParams: { id, page }}:SearchParamProps
   )
 }
 
-export default TransactionHistory
+export default TransactionHistory;

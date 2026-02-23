@@ -19,6 +19,16 @@ export const sidebarLinks = [
     route: "/payment-transfer",
     label: "Transfer Funds",
   },
+  {
+    imgURL: "/icons/bank-account.svg", // Thêm icon này vào thư mục icons
+    route: "/bank-accounts",
+    label: "Bank Accounts",
+  },
+  {
+    imgURL: "/icons/face-id.svg",           // <=== THÊM ICON FACE ID
+    route: "/face-enrollment",
+    label: "Face Enrollment",
+  },
 ];
 
 // good_user / good_password - Bank of America

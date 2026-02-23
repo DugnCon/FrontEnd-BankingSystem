@@ -1,14 +1,18 @@
-/** @type {import('next').NextConfig} */
+// next.config.js  (giữ tên .js, nhưng dùng ES module syntax)
+
+import withSerwistInit from '@serwist/next';
+
+// Config Next.js gốc của bạn
 const nextConfig = {
   typescript: {
-    ignoreBuildErrors: true
+    ignoreBuildErrors: true,
   },
   eslint: {
-    ignoreDuringBuilds: true
+    ignoreDuringBuilds: true,
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
-      // Giả lập các module Node.js cho browser
+      // Giả lập module Node.js cho browser
       config.resolve.fallback = {
         fs: false,
         encoding: false,
@@ -26,14 +30,25 @@ const nextConfig = {
         'node-fetch': false,
       };
     }
-    
-    // Xử lý cho các module ESM
+
+    // Xử lý ESM alias
     config.resolve.alias = {
       ...config.resolve.alias,
       'encoding': false,
     };
-    
+
     return config;
   },
 };
-export default nextConfig;
+
+// Wrap với Serwist (PWA support)
+const withSerwist = withSerwistInit({
+  swSrc: 'app/sw.ts',
+  swDest: 'public/sw.js',
+  disable: process.env.NODE_ENV === 'development',
+  cacheOnNavigation: true,  // Optional: cache navigation tốt hơn cho banking app
+  // Nếu cần fallback page offline, thêm sau:
+  // additionalPrecacheEntries: [{ url: '/offline', revision: null }],
+});
+
+export default withSerwist(nextConfig);

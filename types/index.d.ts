@@ -46,16 +46,16 @@ declare type NewUserParams = {
 };
 
 declare type Account = {
-  id: string;
+  accountID: string | number;
   availableBalance: number;
   currentBalance: number;
   officialName: string;
   mask: string;
-  institutionId: string;
+  institutionID: string;
   name: string;
   type: string;
   subtype: string;
-  shareableId: string;
+  shareableID: string;
 };
 
 declare type Transaction = {
@@ -64,7 +64,7 @@ declare type Transaction = {
   name: string;
   paymentChannel: string;
   type: string;
-  accountId: string;
+  accountID: string | number;
   amount: number;
   pending: boolean;
   category: string;
@@ -78,12 +78,12 @@ declare type Transaction = {
 
 declare type Bank = {
   $id: string;
-  accountId: string;
+  accountID: string | number;
   bankId: string;
   accessToken: string;
   fundingSourceUrl: string;
   userId: string;
-  shareableId: string;
+  shareableID: string;
 };
 
 declare type AccountTypes =
@@ -246,15 +246,15 @@ declare interface getAccountsProps {
 }
 
 declare interface getAccountProps {
-  accountId: string | number;
+  accountID: string | number;
 }
 
 declare interface getInstitutionProps {
-  institutionId: string;
+  institutionID: string;
 }
 
 declare interface getTransactionsProps {
-  accountId: string | number;
+  accountID: string | number;
 }
 
 declare interface CreateFundingSourceOptions {
@@ -295,10 +295,10 @@ declare interface exchangePublicTokenProps {
 declare interface createBankAccountProps {
   accessToken: string;
   userId: string;
-  accountId: string;
+  accountID: string | number;
   bankId: string;
   fundingSourceUrl: string;
-  shareableId: string;
+  shareableID: string;
 }
 
 declare interface getBanksProps {
@@ -310,7 +310,7 @@ declare interface getBankProps {
 }
 
 declare interface getBankByAccountIdProps {
-  accountId: string;
+  accountID: string | number;
 }
 
 declare interface BiometricPreference {

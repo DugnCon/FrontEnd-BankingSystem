@@ -9,6 +9,7 @@ import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
 import { Loader2, Camera, Fingerprint } from 'lucide-react';
+import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import CustomInput from './CustomInput';
 import FaceVerification from './FaceVerification';
@@ -23,6 +24,7 @@ const AuthForm = ({ type }: { type: "sign-in" | "sign-up" }) => {
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [faceFailed, setFaceFailed] = useState(false);
+  const [hasSession, setHasSession] = useState(false);
 
   const formSchema = authFormSchema(type);
 
@@ -42,18 +44,29 @@ const AuthForm = ({ type }: { type: "sign-in" | "sign-up" }) => {
     },
   });
 
-  // Khi vào trang sign-in, KIỂM TRA SESSION CŨ
+  // Kiểm tra session khi vào trang
   useEffect(() => {
+    console.log('🟢 AuthForm mounted, type:', type);
+    
     if (type === 'sign-in') {
       const session = getSession();
-      // Chỉ bật quét mặt nếu có session và chưa fail trước đó
+      console.log('🔍 Checking session:', session);
+      
       if (session?.userID && !faceFailed) {
+        console.log('✅ Has session, showing face verification');
+        setHasSession(true);
         setCurrentUserId(session.userID);
         setShowFaceVerification(true);
+        setShowEmailForm(false);
       } else {
+        console.log('❌ No session or face failed, showing email form');
+        setHasSession(!!session?.userID);
+        setShowFaceVerification(false);
         setShowEmailForm(true);
       }
     } else {
+      console.log('📝 Sign-up mode, showing email form');
+      setShowFaceVerification(false);
       setShowEmailForm(true);
     }
   }, [type, faceFailed]);
@@ -76,15 +89,21 @@ const AuthForm = ({ type }: { type: "sign-in" | "sign-up" }) => {
           password: data.password,
         };
 
-        const res = await apiFetch<{ status: string; message: string }>('/auth/register', {
+        const res = await apiFetch<{ status: string; message: string; user?: any }>('/auth/register', {
           method: 'POST',
           body: JSON.stringify(payload),
         }, false);
 
         if (res.status === 'success') {
-          alert('Registration successful! Please sign in.');
+          toast.success('Registration successful!', {
+            description: 'Please sign in with your credentials.',
+            duration: 5000,
+          });
           router.replace('/sign-in');
         } else {
+          toast.error('Registration failed', {
+            description: res.message || 'Something went wrong. Please try again.',
+          });
           form.setError('root', { message: res.message || 'Registration failed' });
         }
       }
@@ -97,6 +116,8 @@ const AuthForm = ({ type }: { type: "sign-in" | "sign-up" }) => {
             password: data.password,
           }),
         }, false);
+        
+        console.log('📥 Login response:', res);
         const userId = res?.user ? Number(res.user.userID ?? res.user.id ?? 0) : 0;
 
         setSession({
@@ -104,10 +125,36 @@ const AuthForm = ({ type }: { type: "sign-in" | "sign-up" }) => {
           userID: userId,
         });
         
+        toast.success('Login successful!', {
+          description: `Welcome back${res.user?.firstName ? ' ' + res.user.firstName : ''}!`,
+          duration: 3000,
+        });
+        
+        console.log('✅ Login successful, redirecting to home');
         router.replace('/');
         router.refresh();
       }
     } catch (err: any) {
+      console.error('Auth error:', err);
+      
+      if (err?.status === 401) {
+        toast.error('Invalid credentials', {
+          description: 'Email or password is incorrect.',
+        });
+      } else if (err?.status === 400) {
+        toast.error('Validation error', {
+          description: err?.message || 'Please check your input.',
+        });
+      } else if (err?.status === 409) {
+        toast.error('Email already exists', {
+          description: 'This email is already registered. Please sign in instead.',
+        });
+      } else {
+        toast.error('Something went wrong', {
+          description: err?.message || 'Please try again later.',
+        });
+      }
+      
       form.setError('root', {
         message: err?.message || 'An error occurred',
       });
@@ -117,36 +164,69 @@ const AuthForm = ({ type }: { type: "sign-in" | "sign-up" }) => {
   };
 
   const handleFaceSuccess = () => {
+    console.log('✅ Face verification success, redirecting to home');
+    toast.success('Face verification successful!', {
+      description: 'Welcome back!',
+      duration: 3000,
+    });
     router.replace('/');
     router.refresh();
   };
 
   const handleFaceFallback = () => {
-    // FAIL 2 lần → tắt quét mặt, bật form nhập
+    console.log('⚠️ Face verification failed 2 times');
+    toast.warning('Face verification failed', {
+      description: 'Please use email and password to sign in.',
+    });
     setFaceFailed(true);
     setShowFaceVerification(false);
     setShowEmailForm(true);
   };
 
   const handleFaceError = (error: string) => {
-    form.setError('root', { message: error });
+    console.log('❌ Face error:', error);
+    toast.error('Face verification error', {
+      description: error || 'Please use email and password to sign in.',
+    });
     setFaceFailed(true);
     setShowFaceVerification(false);
     setShowEmailForm(true);
   };
 
   const handleRetryFace = () => {
+    console.log('🔄 Manual retry face clicked');
     const session = getSession();
+    
     if (session?.userID) {
+      console.log('✅ Using session userID:', session.userID);
+      toast.info('Starting face verification...', {
+        description: 'Please look at the camera.',
+      });
+      setFaceFailed(false);
       setCurrentUserId(session.userID);
       setShowFaceVerification(true);
       setShowEmailForm(false);
     } else {
-      form.setError('root', { message: 'Please login first' });
+      console.log('❌ No session');
+      toast.error('No active session', {
+        description: 'Please sign in with email and password first.',
+      });
+      setShowFaceVerification(false);
+      setShowEmailForm(true);
     }
   };
 
+  console.log('🔄 Render state:', { 
+    showFaceVerification, 
+    showEmailForm, 
+    currentUserId, 
+    faceFailed,
+    hasSession 
+  });
+
+  // Nếu đang hiển thị quét mặt
   if (showFaceVerification && currentUserId) {
+    console.log('👤 Rendering face verification');
     return (
       <section className="auth-form">
         <header className="flex flex-col gap-5 md:gap-8">
@@ -198,7 +278,9 @@ const AuthForm = ({ type }: { type: "sign-in" | "sign-up" }) => {
     );
   }
 
+  // Nếu đang hiển thị form nhập email/password
   if (showEmailForm) {
+    console.log('📧 Rendering email form');
     return (
       <section className="auth-form">
         <header className="flex flex-col gap-5 md:gap-8">
@@ -323,7 +405,7 @@ const AuthForm = ({ type }: { type: "sign-in" | "sign-up" }) => {
               )}
             </Button>
 
-            {/* NÚT QUÉT MẶT HIỆN ĐẠI - CHỈ HIỆN KHI SIGN-IN */}
+            {/* NÚT QUÉT MẶT */}
             {type === 'sign-in' && (
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
@@ -380,6 +462,8 @@ const AuthForm = ({ type }: { type: "sign-in" | "sign-up" }) => {
     );
   }
 
+  // Fallback - không nên xảy ra
+  console.log('⏳ Rendering fallback (should not happen)');
   return null;
 };
 

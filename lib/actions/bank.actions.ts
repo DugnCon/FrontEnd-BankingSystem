@@ -4,18 +4,16 @@ import { parseStringify } from "../utils";
 import { apiFetch } from "@/lib/api/http";
 
 export interface Account {
-  id: string;
-  accountId: string;
+  accountID: string | number;
+  userID: number;
   name: string;
   type: string;
-  balance: number;
+  currentBalance: number;
   currency: string;
-  userId: number;
 }
 
 export interface Transaction {
-  id: string;
-  accountId: string;
+  accountID: string | number;
   amount: number;
   type: string;
   category: string;
@@ -24,13 +22,49 @@ export interface Transaction {
   status: string;
 }
 
-export const getAccounts = async ({ userId }: { userId: number | string }) => {
+export interface FullAccount {
+  availableBalance: number;
+  currentBalance: number;
+  officialName: string;
+  mask: string;
+  institutionId: string;
+  name: string;
+  type: string;
+  subtype: string;
+  shareableId: string;
+}
+
+export const checkAccounts = async () => {
+  try {
+    const res = await apiFetch<{
+      hasAccounts: boolean;
+      totalBanks: number;
+      totalCurrentBalance: number;
+      accounts: Account[];
+    }>('/my/accounts/check');
+
+    return parseStringify({
+      hasAccounts: res.hasAccounts || false,
+      totalBanks: res.totalBanks || 0,
+    });
+  } catch (error) {
+    console.error('Check accounts error:', error);
+    return {
+      hasAccounts: false,
+      totalBanks: 0,
+      totalCurrentBalance: 0,
+      accounts: []
+    };
+  }
+};
+
+export const getAccounts = async () => {
   try {
     const res = await apiFetch<{
       data: Account[];
       totalBanks: number;
       totalCurrentBalance: number;
-    }>(`/users/${userId}/accounts`);
+    }>('/my/accounts');
 
     return parseStringify({
       data: res.data || [],
@@ -99,6 +133,87 @@ export const createBankAccount = async (data: {
     return parseStringify(res.account);
   } catch (error) {
     console.error('Create bank account error:', error);
+    throw error;
+  }
+};
+
+export const createFullBankAccount = async (data: {
+  userId: string;
+  name: string;
+  officialName?: string;
+  type: string;
+  subtype: string;
+  mask: string;
+  institutionId?: string;
+  availableBalance: number;
+  currentBalance: number;
+}) => {
+  try {
+    const accountData = {
+      id: `acc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      availableBalance: data.availableBalance,
+      currentBalance: data.currentBalance,
+      officialName: data.officialName || data.name,
+      mask: data.mask,
+      institutionId: data.institutionId || 'MANUAL',
+      name: data.name,
+      type: data.type,
+      subtype: data.subtype,
+      shareableId: `share_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    };
+
+    const res = await apiFetch<{ account: FullAccount }>('/bank-accounts', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...accountData,
+        userId: data.userId,
+      }),
+    });
+
+    return parseStringify(res.account);
+  } catch (error) {
+    console.error('Create full bank account error:', error);
+    throw error;
+  }
+};
+
+export const getFullAccounts = async ({ userId }: { userId: string }) => {
+  try {
+    const res = await apiFetch<FullAccount[]>(`/bank-accounts/user/${userId}`);
+    return parseStringify(res);
+  } catch (error) {
+    console.error('Get full accounts error:', error);
+    return [];
+  }
+};
+
+export const deleteFullBankAccount = async ({ accountId }: { accountId: string }) => {
+  try {
+    await apiFetch(`/bank-accounts/${accountId}`, {
+      method: 'DELETE',
+    });
+    return true;
+  } catch (error) {
+    console.error('Delete full bank account error:', error);
+    return false;
+  }
+};
+
+export const updateFullBankAccount = async ({
+  accountId,
+  data,
+}: {
+  accountId: string;
+  data: Partial<FullAccount>;
+}) => {
+  try {
+    const res = await apiFetch<FullAccount>(`/bank-accounts/${accountId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    return parseStringify(res);
+  } catch (error) {
+    console.error('Update full bank account error:', error);
     throw error;
   }
 };

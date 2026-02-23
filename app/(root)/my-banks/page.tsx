@@ -11,13 +11,18 @@ const MyBanks = async () => {
     return <div>Đang tải hoặc chưa đăng nhập...</div>;
   }
 
-  const accounts = await getAccounts({ 
-    userId: loggedIn.$id 
-  });
+  const accounts = await getAccounts();
 
   if (!accounts || !accounts.data) {
     return <div>Không có tài khoản nào</div>;
   }
+
+  // Vì data chỉ là 1 object duy nhất (không phải mảng)
+  const accountList = accounts.data && typeof accounts.data === 'object' && !Array.isArray(accounts.data)
+    ? [accounts.data]
+    : Array.isArray(accounts.data)
+    ? accounts.data
+    : [];
 
   return (
     <section className="flex">
@@ -32,9 +37,9 @@ const MyBanks = async () => {
             Your cards
           </h2>
           <div className="flex flex-wrap gap-6">
-            {accounts.data.map((a: Account) => (
+            {accountList.map((a: Account) => (
               <BankCard 
-                key={a.id}
+                key={a.accountID}
                 account={a}
                 userName={`${loggedIn.firstName} ${loggedIn.lastName}`.trim() || 'Guest'}
                 showBalance={true}

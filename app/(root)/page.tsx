@@ -14,16 +14,14 @@ const Home = async ({ searchParams: { id, page } }: SearchParamProps) => {
     redirect('/sign-in');
   }
 
-  const accounts = await getAccounts({ 
-    userId: loggedIn.userID ?? ''
-  });
-
+  const accounts = await getAccounts();
   if (!accounts) return <div>Không có tài khoản</div>;
-  
+
   const accountsData = accounts?.data;
-  
-  const accountId = (id as string) || accountsData[0]?.accountId || accountsData[0]?.id;
-  const account = await getAccount({ accountId }); // Sửa param
+
+  // Vì data chỉ là 1 object duy nhất, không phải mảng
+  const accountId = (id as string) || accountsData?.accountID || accountsData?.id;
+  const account = await getAccount({ accountId });
 
   return (
     <section className="home">
@@ -37,16 +35,16 @@ const Home = async ({ searchParams: { id, page } }: SearchParamProps) => {
           />
 
           <TotalBalanceBox 
-            accounts={accountsData}
-            totalBanks={accounts?.totalBanks}
-            totalCurrentBalance={accounts?.totalCurrentBalance}
+            accounts={accountsData ? [accountsData] : []}
+            totalBanks={accounts?.totalBanks ?? (accountsData ? 1 : 0)}
+            totalCurrentBalance={accounts?.totalCurrentBalance ?? (accountsData?.currentBalance || 0)}
           />
         </header>
 
         <RecentTransactions 
-          accounts={accountsData}
+          accounts={accountsData ? [accountsData] : []}
           transactions={account?.transactions || []}
-          selectedAccountId={accountId} // Sửa tên prop
+          selectedAccountId={accountId} 
           page={currentPage}
         />
       </div>
@@ -54,7 +52,7 @@ const Home = async ({ searchParams: { id, page } }: SearchParamProps) => {
       <RightSidebar 
         user={loggedIn}
         transactions={account?.transactions || []}
-        banks={accountsData?.slice(0, 2) || []}
+        banks={accountsData ? [accountsData] : []}
       />
     </section>
   );
