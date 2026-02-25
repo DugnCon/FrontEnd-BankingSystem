@@ -114,13 +114,17 @@ Create a new file named `.env` in the root of your project and add the following
 NEXT_PUBLIC_SITE_URL=
 ```
 
-Replace the placeholder values with your actual respective account credentials. You can obtain these credentials by signing up on the [Appwrite](https://appwrite.io/?utm_source=youtube&utm_content=reactnative&ref=JSmastery), [Plaid](https://plaid.com/) and [Dwolla](https://www.dwolla.com/)
-
 **Running the Project**
 
 ```bash
-npm run dev
+npm run build
 ```
+
+
+```bash
+npm run start
+```
+
 
 Open [http://localhost:3000](http://localhost:3000) in your browser to view the project.
 
@@ -1568,6 +1572,6 @@ export const Category = ({ category }: CategoryProps) => {
 ```
 
 </details>
-"# FrontEnd-BankingSystem" 
+
 
 
