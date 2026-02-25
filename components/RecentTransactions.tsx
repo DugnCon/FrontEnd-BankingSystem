@@ -22,42 +22,55 @@ const RecentTransactions = ({
     indexOfLastTransaction
   );
 
-  const selectedAccount = accounts.find(acc => acc.id === selectedAccountId) || accounts[0];
+  if (accounts.length === 0) {
+    return (
+      <section className="recent-transactions">
+        <header className="flex items-center justify-between">
+          <h2 className="recent-transactions-label">Recent transactions</h2>
+        </header>
+        <p className="text-muted-foreground">No accounts available.</p>
+      </section>
+    );
+  }
+
+  const selectedAccount =
+    accounts.find((acc) => acc.accountID === selectedAccountId) || accounts[0];
+
+  const defaultTabValue = selectedAccount.accountID;
 
   return (
     <section className="recent-transactions">
       <header className="flex items-center justify-between">
         <h2 className="recent-transactions-label">Recent transactions</h2>
         <Link
-          href={`/transaction-history/?id=${selectedAccount?.id || ''}`}
+          href={`/transaction-history/?id=${defaultTabValue}`}
           className="view-all-btn"
         >
           View all
         </Link>
       </header>
 
-      <Tabs defaultValue={selectedAccount?.id || ''} className="w-full">
+      <Tabs defaultValue={defaultTabValue} className="w-full">
         <TabsList className="recent-transactions-tablist">
-          {accounts.map((account: Account) => (
-            <TabsTrigger key={account.id} value={account.id}>
+          {accounts.map((account) => (
+            <TabsTrigger key={account.accountID} value={account.accountID}>
               <BankTabItem
-                key={account.id}
                 account={account}
-                selectedAccountId={account.id}
+                selectedAccountId={account.accountID}
               />
             </TabsTrigger>
           ))}
         </TabsList>
 
-        {accounts.map((account: Account) => (
+        {accounts.map((account) => (
           <TabsContent
-            value={account.id}
-            key={account.id}
+            key={account.accountID}
+            value={account.accountID}
             className="space-y-4"
           >
-            <BankInfo 
+            <BankInfo
               account={account}
-              selectedAccountId={account.id}
+              selectedAccountId={account.accountID}
               type="full"
             />
 

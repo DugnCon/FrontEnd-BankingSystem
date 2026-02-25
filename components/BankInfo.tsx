@@ -10,17 +10,17 @@ import {
   getAccountTypeColors,
 } from "@/lib/utils";
 
-const BankInfo = ({ account, selectedAccountId, type }: { account: Account; selectedAccountId: string; type: "full" | "card" }) => {
+const BankInfo = ({ account, selectedAccountId, type }: { account: Account; selectedAccountId: string | number; type: "full" | "card" }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const isActive = selectedAccountId === account?.id;
+  const isActive = selectedAccountId === account?.accountID;
 
   const handleBankChange = () => {
     const newUrl = formUrlQuery({
       params: searchParams.toString(),
       key: "id",
-      value: account?.id,
+      value: account?.accountID,
     });
     router.push(newUrl, { scroll: false });
   };

@@ -3,16 +3,18 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
+import { v4 as uuidv4 } from "uuid";
 import * as z from "zod";
+import { toast } from "sonner";
 
+import { createTransaction } from "@/lib/actions/transaction.actions";
 import { BankDropdown } from "./BankDropdown";
 import { Button } from "./ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -20,26 +22,28 @@ import {
 } from "./ui/form";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
-
-// Giả lập toast (mày có thể import từ sonner hoặc shadcn nếu dùng)
-const toast = {
-  success: (msg: string) => console.log("[TOAST SUCCESS]", msg),
-  error: (msg: string) => console.log("[TOAST ERROR]", msg),
-};
+import { cn } from "@/lib/utils";
 
 const formSchema = z.object({
   email: z.string().email("Email không hợp lệ"),
   name: z.string().min(4, "Ghi chú chuyển khoản quá ngắn"),
   amount: z.string().min(1, "Số tiền không được để trống"),
-  senderBank: z.string().min(1, "Vui lòng chọn tài khoản nguồn"),
+  senderBank: z.string().optional(),
   sharableId: z.string().min(1, "Vui lòng nhập mã tài khoản nhận"),
 });
+
+type FormValues = z.infer<typeof formSchema>;
+
+interface PaymentTransferFormProps {
+  accounts: any[];
+}
 
 const PaymentTransferForm = ({ accounts }: PaymentTransferFormProps) => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const idempotencyKeyRef = useRef<string>(uuidv4());
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
@@ -50,188 +54,200 @@ const PaymentTransferForm = ({ accounts }: PaymentTransferFormProps) => {
     },
   });
 
-  const submit = async (data: z.infer<typeof formSchema>) => {
+  const submit = async (data: FormValues) => {
+    if (isLoading) return;
     setIsLoading(true);
 
     try {
-      // MOCK: Giả lập chuyển khoản thành công
-      console.log("[MOCK TRANSFER]", {
-        from: data.senderBank,
-        to: data.sharableId,
-        amount: data.amount,
-        note: data.name,
+      const transactionData = {
+        senderId: data.senderBank || null,
+        receiverId: data.sharableId,
+        amount: parseFloat(data.amount),
+        note: data.name || undefined,
         email: data.email,
+      };
+
+      const response = await createTransaction(transactionData, {
+        headers: {
+          "Idempotency-Key": idempotencyKeyRef.current,
+        },
       });
 
-      // Giả lập delay 1s như API thật
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (response?.success) {
+        toast.success(response.message || `Chuyển khoản thành công ${data.amount} VND đến ${data.email}!`);
+        form.reset();
+        router.push("/");
+      } else {
+        toast.error(response.message || "Chuyển khoản thất bại, vui lòng thử lại.");
+      }
+    } catch (error: any) {
+      console.error("[TRANSFER ERROR]:", error);
 
-      // Toast success
-      toast.success(`Chuyển khoản thành công: ${data.amount} VND đến ${data.email}`);
+      let errorMsg = "Chuyển khoản thất bại, vui lòng thử lại.";
 
-      form.reset();
-      router.push("/");
-    } catch (error) {
-      console.error("[MOCK TRANSFER ERROR]:", error);
-      toast.error("Chuyển khoản thất bại, vui lòng thử lại");
+      if (error?.response?.data?.message) {
+        errorMsg = error.response.data.message;
+      } else if (error?.message) {
+        errorMsg = error.message;
+      }
+
+      toast.error(errorMsg);
+
+      if (error?.status === 409 || error?.message?.includes("idempotent")) {
+        toast.error("Giao dịch này đã được xử lý trước đó. Vui lòng kiểm tra lịch sử.");
+      }
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(submit)} className="flex flex-col">
-        <FormField
-          control={form.control}
-          name="senderBank"
-          render={() => (
-            <FormItem className="border-t border-gray-200">
-              <div className="payment-transfer_form-item pb-6 pt-5">
-                <div className="payment-transfer_form-content">
-                  <FormLabel className="text-14 font-medium text-gray-700">
-                    Chọn tài khoản nguồn
-                  </FormLabel>
-                  <FormDescription className="text-12 font-normal text-gray-600">
-                    Chọn tài khoản bạn muốn chuyển tiền từ
-                  </FormDescription>
-                </div>
-                <div className="flex w-full flex-col">
-                  <FormControl>
+      <form onSubmit={form.handleSubmit(submit)} className="space-y-6 pb-8">
+        <div className="rounded-2xl bg-white p-5 shadow-sm">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900">Từ tài khoản</h3>
+          <FormField
+            control={form.control}
+            name="senderBank"
+            render={() => (
+              <FormItem className="space-y-2">
+                <FormLabel className="text-sm font-medium text-gray-700">
+                  Tài khoản nguồn (tùy chọn)
+                </FormLabel>
+                <FormControl>
+                  <div className={cn(isLoading && "pointer-events-none opacity-70")}>
                     <BankDropdown
                       accounts={accounts}
                       setValue={form.setValue}
-                      otherStyles="!w-full"
+                      otherStyles="w-full"
                     />
-                  </FormControl>
-                  <FormMessage className="text-12 text-red-500" />
-                </div>
-              </div>
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem className="border-t border-gray-200">
-              <div className="payment-transfer_form-item pb-6 pt-5">
-                <div className="payment-transfer_form-content">
-                  <FormLabel className="text-14 font-medium text-gray-700">
-                    Ghi chú chuyển khoản (Tùy chọn)
-                  </FormLabel>
-                  <FormDescription className="text-12 font-normal text-gray-600">
-                    Cung cấp thêm thông tin hoặc ghi chú liên quan đến giao dịch
-                  </FormDescription>
-                </div>
-                <div className="flex w-full flex-col">
-                  <FormControl>
-                    <Textarea
-                      placeholder="Viết ghi chú ngắn gọn ở đây"
-                      className="input-class"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage className="text-12 text-red-500" />
-                </div>
-              </div>
-            </FormItem>
-          )}
-        />
-
-        <div className="payment-transfer_form-details">
-          <h2 className="text-18 font-semibold text-gray-900">
-            Thông tin tài khoản nhận
-          </h2>
-          <p className="text-16 font-normal text-gray-600">
-            Nhập thông tin tài khoản của người nhận
-          </p>
+                  </div>
+                </FormControl>
+                <FormMessage className="text-xs text-red-600" />
+              </FormItem>
+            )}
+          />
         </div>
 
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem className="border-t border-gray-200">
-              <div className="payment-transfer_form-item py-5">
-                <FormLabel className="text-14 w-full max-w-[280px] font-medium text-gray-700">
-                  Email người nhận
-                </FormLabel>
-                <div className="flex w-full flex-col">
+        <div className="rounded-2xl bg-white p-5 shadow-sm">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900">Đến người nhận</h3>
+          <div className="space-y-5">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel className="text-sm font-medium text-gray-700">
+                    Email người nhận
+                  </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="ví dụ: johndoe@gmail.com"
-                      className="input-class"
+                      className="h-11 rounded-xl border-gray-300 text-base focus:border-blue-600 focus:ring-blue-500 focus:ring-1"
+                      disabled={isLoading}
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage className="text-12 text-red-500" />
-                </div>
-              </div>
-            </FormItem>
-          )}
-        />
+                  <FormMessage className="text-xs text-red-600" />
+                </FormItem>
+              )}
+            />
 
-        <FormField
-          control={form.control}
-          name="sharableId"
-          render={({ field }) => (
-            <FormItem className="border-t border-gray-200">
-              <div className="payment-transfer_form-item pb-5 pt-6">
-                <FormLabel className="text-14 w-full max-w-[280px] font-medium text-gray-700">
-                  Mã tài khoản nhận (Sharable ID)
-                </FormLabel>
-                <div className="flex w-full flex-col">
+            <FormField
+              control={form.control}
+              name="sharableId"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel className="text-sm font-medium text-gray-700">
+                    Mã tài khoản nhận (Sharable ID)
+                  </FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Nhập mã tài khoản công khai"
-                      className="input-class"
+                      placeholder="Nhập mã Shareable ID"
+                      className="h-11 rounded-xl border-gray-300 text-base focus:border-blue-600 focus:ring-blue-500 focus:ring-1"
+                      disabled={isLoading}
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage className="text-12 text-red-500" />
-                </div>
-              </div>
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="amount"
-          render={({ field }) => (
-            <FormItem className="border-y border-gray-200">
-              <div className="payment-transfer_form-item py-5">
-                <FormLabel className="text-14 w-full max-w-[280px] font-medium text-gray-700">
-                  Số tiền
-                </FormLabel>
-                <div className="flex w-full flex-col">
-                  <FormControl>
-                    <Input
-                      placeholder="ví dụ: 5.00"
-                      className="input-class"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage className="text-12 text-red-500" />
-                </div>
-              </div>
-            </FormItem>
-          )}
-        />
-
-        <div className="payment-transfer_btn-box">
-          <Button type="submit" className="payment-transfer_btn" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 size={20} className="animate-spin" /> &nbsp; Đang gửi...
-              </>
-            ) : (
-              "Chuyển khoản"
-            )}
-          </Button>
+                  <FormMessage className="text-xs text-red-600" />
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
+
+        <div className="rounded-2xl bg-white p-5 shadow-sm">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900">Chi tiết chuyển khoản</h3>
+          <div className="space-y-5">
+            <FormField
+              control={form.control}
+              name="amount"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel className="text-sm font-medium text-gray-700">
+                    Số tiền (VND)
+                  </FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input
+                        placeholder="0"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        className="h-11 rounded-xl border-gray-300 pl-10 pr-16 text-base focus:border-blue-600 focus:ring-blue-500 focus:ring-1"
+                        disabled={isLoading}
+                        {...field}
+                      />
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                        <span className="text-gray-500 text-base">₫</span>
+                      </div>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
+                        <span className="text-gray-400 text-sm">VND</span>
+                      </div>
+                    </div>
+                  </FormControl>
+                  <FormMessage className="text-xs text-red-600" />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel className="text-sm font-medium text-gray-700">
+                    Nội dung CK (tùy chọn)
+                  </FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Ví dụ: Chuyển tiền sinh nhật bạn"
+                      className="min-h-[90px] rounded-xl border-gray-300 text-base focus:border-blue-600 focus:ring-blue-500 focus:ring-1"
+                      disabled={isLoading}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage className="text-xs text-red-600" />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        <Button
+          type="submit"
+          className="h-12 w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-base font-semibold text-white shadow-md hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 transition-all"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Đang xử lý...
+            </>
+          ) : (
+            "Xác nhận chuyển khoản"
+          )}
+        </Button>
       </form>
     </Form>
   );

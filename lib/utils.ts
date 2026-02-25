@@ -85,13 +85,13 @@ export const removeSpecialCharacters = (value: string) => {
 interface UrlQueryParams {
   params: string;
   key: string;
-  value: string;
+  value: string | number; 
 }
 
 export function formUrlQuery({ params, key, value }: UrlQueryParams) {
   const currentUrl = qs.parse(params);
 
-  currentUrl[key] = value;
+  currentUrl[key] = String(value); 
 
   return qs.stringifyUrl(
     {

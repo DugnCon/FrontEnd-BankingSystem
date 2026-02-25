@@ -39,7 +39,7 @@ declare type User = {
 };
 
 declare type NewUserParams = {
-  userId: string;
+  userID: string | number;
   email: string;
   name: string;
   password: string;
@@ -181,6 +181,7 @@ declare interface BankDropdownProps {
   accounts: Account[];
   setValue?: UseFormSetValue<any>;
   otherStyles?: string;
+  disabled?: boolean;
 }
 
 declare interface BankTabItemProps {
@@ -212,7 +213,7 @@ declare interface SiderbarProps {
 declare interface RecentTransactionsProps {
   accounts: Account[];
   transactions: Transaction[];
-  selectedAccountId: string;
+  selectedAccountId: string | number;
   page: number;
 }
 
@@ -265,12 +266,10 @@ declare interface CreateFundingSourceOptions {
 }
 
 declare interface CreateTransactionProps {
-  name: string;
-  amount: string;
-  senderId: string;
-  senderBankId: string;
+  senderId: string | null;
   receiverId: string;
-  receiverBankId: string;
+  amount: number;
+  note: string | undefined;
   email: string;
 }
 
