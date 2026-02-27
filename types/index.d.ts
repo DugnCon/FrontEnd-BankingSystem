@@ -60,7 +60,6 @@ declare type Account = {
 
 declare type Transaction = {
   id: string;
-  $id: string;
   name: string;
   paymentChannel: string;
   type: string;
@@ -70,7 +69,7 @@ declare type Transaction = {
   category: string;
   date: string;
   image: string;
-  $createdAt: string;
+  createdAt: string;
   channel: string;
   senderBankId: string;
   receiverBankId: string;
@@ -213,7 +212,7 @@ declare interface SiderbarProps {
 declare interface RecentTransactionsProps {
   accounts: Account[];
   transactions: Transaction[];
-  selectedAccountId: string | number;
+  selectedAccountID: string | number;
   page: number;
 }
 

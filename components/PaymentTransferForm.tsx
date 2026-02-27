@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { v4 as uuidv4 } from "uuid";
 import * as z from "zod";
@@ -36,9 +36,14 @@ type FormValues = z.infer<typeof formSchema>;
 
 interface PaymentTransferFormProps {
   accounts: any[];
+  initialData?: {
+    receiverId?: string;
+    accountNumber?: string;
+    accountName?: string;
+  };
 }
 
-const PaymentTransferForm = ({ accounts }: PaymentTransferFormProps) => {
+const PaymentTransferForm = ({ accounts, initialData }: PaymentTransferFormProps) => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const idempotencyKeyRef = useRef<string>(uuidv4());
@@ -50,9 +55,15 @@ const PaymentTransferForm = ({ accounts }: PaymentTransferFormProps) => {
       email: "",
       amount: "",
       senderBank: "",
-      sharableId: "",
+      sharableId: initialData?.receiverId || initialData?.accountNumber || "",
     },
   });
+
+  useEffect(() => {
+    if (initialData?.accountName) {
+      toast.success(`Đã lấy thông tin từ QR của ${initialData.accountName}`);
+    }
+  }, [initialData]);
 
   const submit = async (data: FormValues) => {
     if (isLoading) return;

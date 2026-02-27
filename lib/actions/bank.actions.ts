@@ -81,20 +81,36 @@ export const getAccounts = async () => {
   }
 };
 
-export const getAccount = async ({ accountId }: { accountId: string }) => {
+export const getTransactionHistory = async ({
+  accountId,
+  limit = 20,
+}: {
+  accountId: string | number | undefined;
+  limit?: number;
+}) => {
+  if (!accountId) {
+    return { transactions: [] };
+  }
+
   try {
     const res = await apiFetch<{
-      data: Account;
       transactions: Transaction[];
-    }>(`/accounts/${accountId}`);
+    }>(`/accounts/${accountId}/history?limit=${limit}`);
+
+    const transactions = Array.isArray(res.transactions) ? res.transactions : [];
+
+    const cleanTransactions = transactions.map((tx) => ({
+      ...tx,
+      description: tx.description ?? '',
+      type: tx.type ?? 'unknown',
+    }));
 
     return parseStringify({
-      ...res.data,
-      transactions: res.transactions || []
+      transactions: cleanTransactions,
     });
   } catch (error) {
-    console.error('Get account error:', error);
-    return null;
+    console.error('Get transaction history error:', error);
+    return { transactions: [] };
   }
 };
 

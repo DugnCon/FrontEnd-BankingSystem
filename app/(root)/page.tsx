@@ -1,13 +1,15 @@
+import { redirect } from 'next/navigation';
 import HeaderBox from '@/components/HeaderBox';
 import RecentTransactions from '@/components/RecentTransactions';
 import RightSidebar from '@/components/RightSidebar';
 import TotalBalanceBox from '@/components/TotalBalanceBox';
-import { getAccount, getAccounts } from '@/lib/actions/bank.actions';
+import MyQRButton from '@/components/MyQRButton';
+import QRScannerButton from '@/components/QRScannerButton';
+import { getAccounts, getTransactionHistory } from '@/lib/actions/bank.actions';
 import { getLoggedInUser } from '@/lib/actions/user.actions';
-import { redirect } from 'next/navigation';
 
 const Home = async ({ searchParams: { id, page } }: SearchParamProps) => {
-  const currentPage = Number(page as string) || 1;
+  const currentPage = Number(page) || 1;
   const loggedIn = await getLoggedInUser();
 
   if (!loggedIn) {
@@ -15,43 +17,57 @@ const Home = async ({ searchParams: { id, page } }: SearchParamProps) => {
   }
 
   const accounts = await getAccounts();
-  if (!accounts) return <div>Không có tài khoản</div>;
+  if (!accounts || !accounts.data) {
+    return <div>Không có tài khoản</div>;
+  }
 
-  const accountsData = accounts?.data;
+  const accountsData = accounts.data;
+  const accountId = id || accountsData.accountID || accountsData.id;
 
-  // Vì data chỉ là 1 object duy nhất, không phải mảng
-  const accountId = (id as string) || accountsData?.accountID || accountsData?.id;
-  const account = await getAccount({ accountId });
+  if (!accountId) {
+    return <div>Chưa chọn tài khoản để xem lịch sử giao dịch</div>;
+  }
+
+  const account = await getTransactionHistory({ accountId });
+
+  const transactions = account?.transactions ?? [];
+  const userName = loggedIn.firstName || loggedIn.name || 'Guest';
 
   return (
     <section className="home">
       <div className="home-content">
         <header className="home-header">
-          <HeaderBox 
-            type="greeting"
-            title="Welcome"
-            user={loggedIn.firstName || loggedIn.name || 'Guest'}
-            subtext="Access and manage your account and transactions efficiently."
-          />
+          <div className="flex items-center justify-between w-full">
+            <HeaderBox 
+              type="greeting"
+              title="Welcome"
+              user={userName}
+              subtext="Access and manage your account and transactions efficiently."
+            />
+            <div className="flex gap-2">
+              <MyQRButton />
+              <QRScannerButton />
+            </div>
+          </div>
 
           <TotalBalanceBox 
             accounts={accountsData ? [accountsData] : []}
-            totalBanks={accounts?.totalBanks ?? (accountsData ? 1 : 0)}
-            totalCurrentBalance={accounts?.totalCurrentBalance ?? (accountsData?.currentBalance || 0)}
+            totalBanks={accounts.totalBanks ?? 1}
+            totalCurrentBalance={accounts.totalCurrentBalance ?? (accountsData?.currentBalance || 0)}
           />
         </header>
 
         <RecentTransactions 
           accounts={accountsData ? [accountsData] : []}
-          transactions={account?.transactions || []}
-          selectedAccountId={accountId} 
+          transactions={transactions}
+          selectedAccountID={accountId} 
           page={currentPage}
         />
       </div>
 
       <RightSidebar 
         user={loggedIn}
-        transactions={account?.transactions || []}
+        transactions={transactions}
         banks={accountsData ? [accountsData] : []}
       />
     </section>

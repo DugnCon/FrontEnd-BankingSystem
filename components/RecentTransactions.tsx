@@ -6,9 +6,9 @@ import TransactionsTable from './TransactionsTable';
 import { Pagination } from './Pagination';
 
 const RecentTransactions = ({
-  accounts,
+  accounts = [],
   transactions = [],
-  selectedAccountId,
+  selectedAccountID,
   page = 1,
 }: RecentTransactionsProps) => {
   const rowsPerPage = 10;
@@ -34,9 +34,11 @@ const RecentTransactions = ({
   }
 
   const selectedAccount =
-    accounts.find((acc) => acc.accountID === selectedAccountId) || accounts[0];
+    accounts.find((acc) => acc.accountID === selectedAccountID) ||
+    accounts[0] ||
+    {};
 
-  const defaultTabValue = selectedAccount.accountID;
+  const defaultTabValue = selectedAccount.accountID || 'no-account';
 
   return (
     <section className="recent-transactions">
@@ -56,7 +58,7 @@ const RecentTransactions = ({
             <TabsTrigger key={account.accountID} value={account.accountID}>
               <BankTabItem
                 account={account}
-                selectedAccountId={account.accountID}
+                selectedAccountId={selectedAccountID} // sửa để pass đúng selected
               />
             </TabsTrigger>
           ))}
@@ -70,7 +72,7 @@ const RecentTransactions = ({
           >
             <BankInfo
               account={account}
-              selectedAccountId={account.accountID}
+              selectedAccountId={selectedAccountID}
               type="full"
             />
 
