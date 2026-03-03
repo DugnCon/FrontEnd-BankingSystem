@@ -23,8 +23,8 @@ const MyQRButton = () => {
       } else {
         toast.error(result.message || "Không thể tạo mã QR");
       }
-    } catch (error) {
-      toast.error("Lỗi khi tạo mã QR");
+    } catch (error: any) {
+      toast.error(error?.message || "Lỗi khi tạo mã QR");
     } finally {
       setLoading(false);
     }
@@ -45,12 +45,14 @@ const MyQRButton = () => {
   };
 
   const handleDownload = () => {
-    if (qrData?.qrDataUrl) {
-      const link = document.createElement('a');
-      link.href = qrData.qrDataUrl;
-      link.download = `qrcode-${qrData.accountNumber}.png`;
-      link.click();
-    }
+    if (!qrData?.qrDataUrl) return;
+
+    const link = document.createElement('a');
+    link.href = qrData.qrDataUrl;
+    link.download = `qrcode-${qrData.accountNumber || 'my-qr'}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -76,31 +78,48 @@ const MyQRButton = () => {
           ) : qrData ? (
             <div className="space-y-4">
               <div className="flex justify-center p-4 bg-white rounded-xl border">
-                {qrData.qrDataUrl && (
-                  <Image 
-                    src={qrData.qrDataUrl} 
-                    alt="QR Code" 
-                    width={200} 
+                {qrData.qrDataUrl ? (
+                  <Image
+                    src={qrData.qrDataUrl}
+                    alt="QR Code nhận tiền"
+                    width={200}
                     height={200}
-                    className="w-48 h-48"
+                    className="w-48 h-48 object-contain"
+                    priority
                   />
+                ) : (
+                  <p className="text-red-500 text-center py-4">
+                    Không tải được hình QR
+                  </p>
                 )}
               </div>
 
               <div className="space-y-2 text-center">
-                <p className="font-semibold text-lg">{qrData.accountName}</p>
+                <p className="font-semibold text-lg">{qrData.accountName || 'Chưa có tên'}</p>
                 <div className="flex items-center justify-center gap-2">
-                  <p className="text-gray-600 font-mono">{qrData.accountNumber}</p>
-                  <button onClick={handleCopy} className="text-blue-600 hover:text-blue-700">
-                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  </button>
+                  <p className="text-gray-600 font-mono">
+                    {qrData.accountNumber || 'Chưa có số TK'}
+                  </p>
+                  {qrData.accountNumber && (
+                    <button
+                      onClick={handleCopy}
+                      className="text-blue-600 hover:text-blue-700 transition-colors"
+                    >
+                      {copied ? (
+                        <Check className="h-4 w-4" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </button>
+                  )}
                 </div>
-                <p className="text-sm text-gray-500">{qrData.bankName}</p>
+                <p className="text-sm text-gray-500">{qrData.bankName || 'Chưa có ngân hàng'}</p>
               </div>
 
               <div className="flex gap-2">
                 <Button
                   onClick={handleDownload}
+                  disabled={!qrData.qrDataUrl}
                   className="flex-1 flex items-center justify-center gap-2"
                 >
                   <Download className="h-4 w-4" />
